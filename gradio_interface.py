@@ -1,3 +1,6 @@
+import os
+import shutil
+import datetime
 import torch
 import torchaudio
 import gradio as gr
@@ -6,6 +9,9 @@ from os import getenv
 from zonos.model import Zonos, DEFAULT_BACKBONE_CLS as ZonosBackbone
 from zonos.conditioning import make_cond_dict, supported_language_codes
 from zonos.utils import DEFAULT_DEVICE as device
+
+VOICE_DIR = "voices"
+os.makedirs(VOICE_DIR, exist_ok=True)
 
 CURRENT_MODEL_TYPE = None
 CURRENT_MODEL = None
@@ -203,6 +209,26 @@ def generate_audio(
     return (sr_out, wav_out.squeeze().numpy()), seed
 
 
+def _list_saved_voices():
+    return [os.path.splitext(f)[0] for f in os.listdir(VOICE_DIR) if f.endswith(".wav")]
+
+
+def save_voice(speaker_audio, voice_name):
+    if not speaker_audio:
+        return _list_saved_voices()
+    if not voice_name:
+        voice_name = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    dest = os.path.join(VOICE_DIR, f"{voice_name}.wav")
+    shutil.copy(speaker_audio, dest)
+    return _list_saved_voices()
+
+
+def load_saved_voice(choice):
+    if not choice:
+        return None
+    return os.path.join(VOICE_DIR, f"{choice}.wav")
+
+
 def build_interface():
     supported_models = []
     if "transformer" in ZonosBackbone.supported_architectures:
@@ -248,6 +274,9 @@ def build_interface():
                     type="filepath",
                 )
                 speaker_noised_checkbox = gr.Checkbox(label="Denoise Speaker?", value=False)
+                voice_name = gr.Textbox(label="Voice Name")
+                save_voice_button = gr.Button("Save Voice")
+                saved_voice_dropdown = gr.Dropdown(label="Saved Voices", choices=_list_saved_voices())
 
         with gr.Row():
             with gr.Column():
@@ -409,6 +438,9 @@ def build_interface():
             ],
             outputs=[output_audio, seed_number],
         )
+
+        save_voice_button.click(save_voice, [speaker_audio, voice_name], saved_voice_dropdown)
+        saved_voice_dropdown.change(load_saved_voice, saved_voice_dropdown, speaker_audio)
 
     return demo
 
