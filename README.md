@@ -157,3 +157,9 @@ docker run -it --gpus=all --net=host -v /path/to/Zonos:/Zonos -t zonos
 cd /Zonos
 python sample.py # this will generate a sample.wav in /Zonos
 ```
+
+## Maintainers
+
+This repository is currently maintained by the new management. All credit for the original model and code goes to the Zyphra team.
+
+
