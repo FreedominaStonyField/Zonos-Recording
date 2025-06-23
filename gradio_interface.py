@@ -200,6 +200,12 @@ def generate_audio(
 
     wav_out = selected_model.autoencoder.decode(codes).cpu().detach()
     sr_out = selected_model.autoencoder.sampling_rate
+
+    # The autoencoder returns audio in [batch, channels, samples]. We only
+    # support batch size 1, so remove that dimension if present.
+    if wav_out.dim() == 3:
+        wav_out = wav_out[0]
+
     if wav_out.dim() == 2 and wav_out.size(0) > 1:
         wav_out = wav_out[0:1, :]
 
