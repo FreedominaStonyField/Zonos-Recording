@@ -2,6 +2,8 @@ import torch
 import torchaudio
 import gradio as gr
 from os import getenv
+from datetime import datetime
+from pathlib import Path
 
 from zonos.model import Zonos, DEFAULT_BACKBONE_CLS as ZonosBackbone
 from zonos.conditioning import make_cond_dict, supported_language_codes
@@ -200,7 +202,14 @@ def generate_audio(
     sr_out = selected_model.autoencoder.sampling_rate
     if wav_out.dim() == 2 and wav_out.size(0) > 1:
         wav_out = wav_out[0:1, :]
-    return (sr_out, wav_out.squeeze().numpy()), seed
+
+    # Save recording to disk
+    recordings_dir = Path("recordings")
+    recordings_dir.mkdir(exist_ok=True)
+    file_path = recordings_dir / f"zonos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav"
+    torchaudio.save(str(file_path), wav_out, sr_out)
+
+    return (sr_out, wav_out.squeeze().numpy()), seed, str(file_path)
 
 
 def build_interface():
@@ -319,6 +328,7 @@ def build_interface():
         with gr.Column():
             generate_button = gr.Button("Generate Audio")
             output_audio = gr.Audio(label="Generated Audio", type="numpy", autoplay=True)
+            saved_path = gr.Textbox(label="Saved File Path", interactive=False)
 
         model_choice.change(
             fn=update_ui,
@@ -407,7 +417,7 @@ def build_interface():
                 randomize_seed_toggle,
                 unconditional_keys,
             ],
-            outputs=[output_audio, seed_number],
+            outputs=[output_audio, seed_number, saved_path],
         )
 
     return demo
